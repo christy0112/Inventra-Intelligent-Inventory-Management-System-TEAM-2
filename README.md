@@ -19,6 +19,7 @@ mvnw.cmd spring-boot:run
 ```
 
 ### 3. Access Dashboards
+  login:http://localhost:8081/login.html
 - Admin: http://localhost:8081/inventory.html
 - Staff: http://localhost:8081/staff.html
 
