@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Staff Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    .navbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .navbar button {
+      flex: 1;
+      padding: 12px;
+      background: #388e3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .navbar button:hover {
+      background: #2e7d32;
+    }
+
+    .section {
+      display: none;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: #388e3c;
+      color: white;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .logout-btn {
+      padding: 8px 16px;
+      background: #d32f2f;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .logout-btn:hover {
+      background: #b71c1c;
+    }
+
+    .error {
+      color: red;
+      margin-top: 8px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h2>Staff Inventory Dashboard</h2>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="navbar">
+    <button onclick="openProducts()">Products</button>
+    <button onclick="openStock()">Stock IN / OUT</button>
+    <button onclick="openAlerts()">Alerts</button>
+    <button onclick="openTransactions()">Transactions</button>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div id="productSection" class="section active">
+    <h3>Products</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Qty</th>
+        </tr>
+      </thead>
+      <tbody id="productTable"></tbody>
+    </table>
+  </div>
+
+  <!-- STOCK IN / OUT -->
+  <div id="stockSection" class="section">
+    <h3>Stock IN / OUT</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px;">
+      <input id="pid" placeholder="Product ID" type="number">
+      <input id="qty" placeholder="Quantity" type="number">
+    </div>
+    <button onclick="stockIn()"
+      style="width: 100%; padding: 10px; margin-top: 10px; background: #388e3c; color: white; border: none; cursor: pointer;">Stock
+      IN</button>
+    <button onclick="stockOut()"
+      style="width: 100%; padding: 10px; margin-top: 10px; background: #d32f2f; color: white; border: none; cursor: pointer;">Stock
+      OUT</button>
+    <div id="stockMsg" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="alertSection" class="section">
+    <h3>Low Stock Alerts</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Alert ID</th>
+          <th>Product</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody id="alertTable"></tbody>
+    </table>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div id="transactionSection" class="section">
+    <h3>Transaction History</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>User</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="transactionTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const base = "http://localhost:8081";
+
+    function getAuthHeaders() {
+      const token = localStorage.getItem("token");
+      return {
+        "Content-Type": "application/json",
+        "Authorization": token ? "Bearer " + token : ""
+      };
+    }
+
+    function hideAll() {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    }
+
+    function openProducts() {
+      hideAll();
+      productSection.classList.add('active');
+      loadProducts();
+    }
+
+    function openStock() {
+      hideAll();
+      stockSection.classList.add('active');
+      loadProducts();
+    }
+
+    function openAlerts() {
+      hideAll();
+      alertSection.classList.add('active');
+      loadAlerts();
+    }
+
+    function openTransactions() {
+      hideAll();
+      transactionSection.classList.add('active');
+      loadTransactions();
+    }
+
+    function loadProducts() {
+      fetch(base + "/api/products", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          productTable.innerHTML = "";
+          data.forEach(p => {
+            productTable.innerHTML += `
+         <tr>
+           <td>${p.productId}</td>
+           <td>${p.name}</td>
+           <td>${p.quantity}</td>
+         </tr>`;
+          });
+        });
+    }
+
+    function renderAlerts(data) {
+      alertTable.innerHTML = "";
+      data.forEach(a => {
+        alertTable.innerHTML += `
+        <tr>
+          <td>${a.alertId}</td>
+          <td>${a.productId}</td>
+          <td>${a.alertMessage}</td>
+        </tr>`;
+      });
+    }
+
+    function loadAlerts() {
+      fetch(base + "/alerts/open", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          renderAlerts(data);
+        });
+    }
+
+    function loadTransactions() {
+      fetch(base + "/api/transactions", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          transactionTable.innerHTML = "";
+          data.forEach(t => {
+            transactionTable.innerHTML += `
+            <tr>
+              <td>${t.transactionId}</td>
+              <td>${t.transactionType}</td>
+              <td>${t.product ? t.product.name : 'Unknown'}</td>
+              <td>${t.quantity}</td>
+              <td>${t.performedBy ? t.performedBy.username : 'Unknown'}</td>
+              <td>${t.transactionDate}</td>
+            </tr>`;
+          });
+        });
+    }
+
+    function checkAlertsOnLoad() {
+      fetch(base + "/alerts/open", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          if (data.length > 0) {
+            const msg = "Low stock alerts found:\n\n"
+              + data.map(a => "- " + a.alertMessage).join("\n");
+            alert(msg);
+            renderAlerts(data);
+            hideAll();
+            alertSection.classList.add('active');
+          }
+        });
+    }
+
+    function stockIn() {
+      if (!pid.value || !qty.value) {
+        stockMsg.innerText = "Please enter Product ID and Quantity";
+        stockMsg.className = "error";
+        return;
+      }
+      fetch(`${base}/api/inventory/stock-in/${pid.value}/${qty.value}`, {
+        method: "PUT",
+        headers: getAuthHeaders()
+      })
+        .then(r => r.text())
+        .then(msg => {
+          stockMsg.innerText = msg;
+          stockMsg.className = "msg";
+          pid.value = "";
+          qty.value = "";
+          loadProducts();
+          checkAlertsOnLoad();
+        });
+    }
+
+    function stockOut() {
+      if (!pid.value || !qty.value) {
+        stockMsg.innerText = "Please enter Product ID and Quantity";
+        stockMsg.className = "error";
+        return;
+      }
+      fetch(`${base}/api/inventory/stock-out/${pid.value}/${qty.value}`, {
+        method: "PUT",
+        headers: getAuthHeaders()
+      })
+        .then(r => r.text())
+        .then(msg => {
+          stockMsg.innerText = msg;
+          stockMsg.className = "msg";
+          pid.value = "";
+          qty.value = "";
+          loadProducts();
+          checkAlertsOnLoad();
+        });
+    }
+
+    function logout() {
+      if (confirm("Are you sure you want to logout?")) {
+        window.location.href = "login.html";
+      }
+    }
+
+    loadProducts();
+    checkAlertsOnLoad();
+  </script>
+
+</body>
+
+</html>

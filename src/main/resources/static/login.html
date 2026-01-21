@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Inventory Management System</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #eef2f7;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .box {
+            width: 340px;
+            margin: 40px auto;
+            padding: 25px;
+            background: white;
+            box-shadow: 0 0 10px #aaa;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+        }
+
+        .link {
+            text-align: center;
+            color: blue;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #msg {
+            text-align: center;
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Inventory Management System</h1>
+
+    <!-- LOGIN / SIGNUP -->
+    <div class="box" id="authBox">
+        <h3 id="title">Sign In</h3>
+
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+
+        <!-- Signup only -->
+        <input id="email" placeholder="Email" class="hidden">
+        <select id="role" class="hidden">
+            <option value="">Select Role</option>
+            <option value="admin">Admin</option>
+            <option value="employee">Employee</option>
+        </select>
+
+        <button onclick="submitForm()" id="btn">Sign In</button>
+
+        <p class="link" onclick="toggleMode()" id="toggleText">Create new account</p>
+        <p class="link" onclick="showForgot()">Forgot Password?</p>
+
+        <p id="msg"></p>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div class="box hidden" id="forgotBox">
+        <h3>Forgot Password</h3>
+        <input id="fpEmail" placeholder="Enter email">
+        <button onclick="sendOtp()">Send OTP</button>
+        <p class="link" onclick="backToLogin()">Back to Login</p>
+        <p id="fpMsg"></p>
+    </div>
+
+    <!-- VERIFY OTP -->
+    <div class="box hidden" id="otpBox">
+        <h3>Verify OTP</h3>
+        <input id="otp" placeholder="Enter OTP">
+        <button onclick="verifyOtp()">Verify OTP</button>
+        <p id="otpMsg"></p>
+    </div>
+
+    <!-- RESET PASSWORD -->
+    <div class="box hidden" id="resetBox">
+        <h3>Reset Password</h3>
+        <input id="newPass" type="password" placeholder="New Password">
+        <input id="confirmPass" type="password" placeholder="Confirm Password">
+        <button onclick="resetPassword()">Submit</button>
+        <p id="resetMsg"></p>
+    </div>
+
+    <script>
+        let mode = "signin";
+
+        function toggleMode() {
+            if (mode === "signin") {
+                mode = "signup";
+                title.innerText = "Sign Up";
+                btn.innerText = "Sign Up";
+                toggleText.innerText = "Already have an account?";
+                email.classList.remove("hidden");
+                role.classList.remove("hidden");
+            } else {
+                mode = "signin";
+                title.innerText = "Sign In";
+                btn.innerText = "Sign In";
+                toggleText.innerText = "Create new account";
+                email.classList.add("hidden");
+                role.classList.add("hidden");
+            }
+            msg.innerText = "";
+        }
+
+        function submitForm() {
+            if (mode === "signin") signin();
+            else signup();
+        }
+
+        /* ---------- SIGN IN ---------- */
+        function signin() {
+            fetch("/auth/signin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: username.value,
+                    password: password.value
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Store user details
+                        localStorage.setItem("token", data.token);
+                        localStorage.setItem("username", data.username);
+                        localStorage.setItem("role", data.role);
+                        localStorage.setItem("email", data.email);
+
+                        // Redirect based on role
+                        if (data.role === "ADMIN") {
+                            window.location.href = "inventory.html";
+                        } else if (data.role === "STAFF") {
+                            window.location.href = "staff.html";
+                        } else {
+                            msg.innerText = "Unknown role: " + data.role;
+                        }
+                    } else {
+                        msg.innerText = data.message;
+                    }
+                })
+                .catch(err => {
+                    msg.innerText = "Connection error. Please try again.";
+                    console.error(err);
+                });
+        }
+
+        /* ---------- SIGN UP ---------- */
+        function signup() {
+            fetch("/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: username.value,
+                    password: password.value,
+                    email: email.value,
+                    role: role.value
+                })
+            })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === "Signup successful") {
+                        alert("Signup successful. Please login.");
+
+                        toggleMode();
+                    } else {
+                        msg.innerText = data;
+                    }
+                });
+        }
+
+        /* ---------- FORGOT PASSWORD ---------- */
+        function showForgot() {
+            authBox.classList.add("hidden");
+            forgotBox.classList.remove("hidden");
+        }
+
+        function backToLogin() {
+            forgotBox.classList.add("hidden");
+            authBox.classList.remove("hidden");
+        }
+
+        function sendOtp() {
+            fetch("/auth/send-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: fpEmail.value })
+            })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === "OTP_SENT") {
+                        localStorage.setItem("email", fpEmail.value);
+                        forgotBox.classList.add("hidden");
+                        otpBox.classList.remove("hidden");
+                    } else {
+                        fpMsg.innerText = data || "Email not registered";
+                    }
+                });
+        }
+
+        /* ---------- VERIFY OTP ---------- */
+        function verifyOtp() {
+            fetch("/auth/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: localStorage.getItem("email"),
+                    otp: otp.value
+                })
+            })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === "OTP_VERIFIED") {
+                        otpBox.classList.add("hidden");
+                        resetBox.classList.remove("hidden");
+                    } else {
+                        otpMsg.innerText = "Invalid OTP";
+                    }
+                });
+        }
+
+        /* ---------- RESET PASSWORD ---------- */
+        function resetPassword() {
+            if (newPass.value !== confirmPass.value) {
+                resetMsg.innerText = "Passwords do not match";
+                return;
+            }
+
+            fetch("/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: localStorage.getItem("email"),
+                    newPassword: newPass.value
+                })
+            })
+                .then(res => res.text())
+                .then(data => {
+                    if (data === "PASSWORD_RESET_SUCCESS") {
+                        alert("Password reset successful");
+                        localStorage.removeItem("email");
+                        location.reload();
+                    } else {
+                        resetMsg.innerText = "Error resetting password";
+                    }
+                });
+        }
+    </script>
+
+</body>
+
+</html>

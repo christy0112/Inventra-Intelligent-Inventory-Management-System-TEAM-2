@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Inventory Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+        }
+
+        .navbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .navbar button {
+            flex: 1;
+            padding: 12px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .navbar button:hover {
+            background: #0d47a1;
+        }
+
+        .section {
+            display: none;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #1976d2;
+            color: white;
+        }
+
+        .delete {
+            background: red;
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            cursor: pointer;
+        }
+
+        .alert {
+            background: #ffebee;
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .msg {
+            color: green;
+            margin-top: 5px;
+        }
+
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .logout-btn:hover {
+            background: #b71c1c;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h2>Admin Inventory Dashboard</h2>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- NAV BAR -->
+    <div class="navbar">
+        <button onclick="openSection('category')">Category</button>
+        <button onclick="openSection('supplier')">Supplier</button>
+        <button onclick="openSection('product')">Product</button>
+        <button onclick="openSection('stock')">Stock</button>
+        <button onclick="openSection('alerts')">Alerts</button>
+        <button onclick="openSection('transactions')">Transactions</button>
+    </div>
+
+    <!-- CATEGORY -->
+    <div id="category" class="section">
+        <h3>Add Category</h3>
+        <input id="catName" placeholder="Category Name">
+        <input id="catDesc" placeholder="Description">
+        <button onclick="addCategory()">Add Category</button>
+        <div class="msg" id="catMsg"></div>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Action</th>
+            </tr>
+            <tbody id="categoryTable"></tbody>
+        </table>
+    </div>
+
+    <!-- SUPPLIER -->
+    <div id="supplier" class="section">
+        <h3>Add Supplier</h3>
+        <input id="supName" placeholder="Supplier Name">
+        <input id="supPhone" placeholder="Phone">
+        <input id="supEmail" placeholder="Email">
+        <input id="supAddr" placeholder="Address">
+        <button onclick="addSupplier()">Add Supplier</button>
+        <div class="msg" id="supMsg"></div>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Action</th>
+            </tr>
+            <tbody id="supplierTable"></tbody>
+        </table>
+    </div>
+
+    <!-- PRODUCT -->
+    <div id="product" class="section">
+        <h3>Add Product</h3>
+        <input id="sku" placeholder="SKU">
+        <input id="pname" placeholder="Product Name">
+        <input id="price" placeholder="Price">
+
+        <select id="categorySelect"></select>
+        <select id="supplierSelect"></select>
+
+        <button onclick="addProduct()">Add Product</button>
+        <div class="msg" id="prodMsg"></div>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>SKU</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Supplier</th>
+                <th>Qty</th>
+                <th>Action</th>
+            </tr>
+            <tbody id="productTable"></tbody>
+        </table>
+    </div>
+
+    <!-- STOCK -->
+    <div id="stock" class="section">
+        <h3>Stock IN / OUT</h3>
+        <div class="row">
+            <input id="pid" placeholder="Product ID" type="number">
+            <input id="qty" placeholder="Quantity" type="number">
+        </div>
+        <button onclick="stockIn()">Stock IN</button>
+        <button onclick="stockOut()">Stock OUT</button>
+        <div id="stockMsg"></div>
+        <table style="margin-top: 15px;">
+            <tr>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Current Quantity</th>
+            </tr>
+            <tbody id="stockTable"></tbody>
+        </table>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alerts" class="section">
+        <h3>Low Stock Alerts</h3>
+
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Available Qty</th>
+            </tr>
+            <tbody id="alertTable"></tbody>
+        </table>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div id="transactions" class="section">
+        <h3>Transaction History</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>User</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="transactionTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const base = "http://localhost:8081";
+        const LOW_STOCK_LIMIT = 5;
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem("token");
+            return {
+                "Content-Type": "application/json",
+                "Authorization": token ? "Bearer " + token : ""
+            };
+        }
+
+        /* NAV */
+        function openSection(id) {
+            document.querySelectorAll('.section')
+                .forEach(s => s.classList.remove('active'));
+
+            document.getElementById(id).classList.add('active');
+
+            if (id === "category") loadCategories();
+            if (id === "supplier") loadSuppliers();
+            if (id === "product") {
+                loadCategories();
+                loadSuppliers();
+                loadProducts();
+            }
+            if (id === "stock") {
+                loadStockTable();
+            }
+            if (id === "alerts") {
+                loadAlerts();
+            }
+            if (id === "transactions") {
+                loadTransactions();
+            }
+        }
+
+
+        /* LOAD DATA */
+        function loadCategories() {
+            fetch(base + "/api/categories").then(r => r.json()).then(data => {
+                categoryTable.innerHTML = "";
+                categorySelect.innerHTML = "<option value=''>Select Category</option>";
+                data.forEach(c => {
+                    categoryTable.innerHTML += `
+                <tr>
+                    <td>${c.categoryId}</td>
+                    <td>${c.categoryName}</td>
+                    <td>${c.description}</td>
+                    <td><button class="delete" onclick="deleteCategory(${c.categoryId})">Delete</button></td>
+                </tr>`;
+                    categorySelect.innerHTML += `<option value="${c.categoryId}">${c.categoryName}</option>`;
+                });
+            });
+        }
+
+        function loadSuppliers() {
+            fetch(base + "/api/suppliers").then(r => r.json()).then(data => {
+                supplierTable.innerHTML = "";
+                supplierSelect.innerHTML = "<option value=''>Select Supplier</option>";
+                data.forEach(s => {
+                    supplierTable.innerHTML += `
+                <tr>
+                    <td>${s.supplierId}</td>
+                    <td>${s.supplierName}</td>
+                    <td>${s.contactNumber}</td>
+                    <td>${s.email}</td>
+                    <td><button class="delete" onclick="deleteSupplier(${s.supplierId})">Delete</button></td>
+                </tr>`;
+                    supplierSelect.innerHTML += `<option value="${s.supplierId}">${s.supplierName}</option>`;
+                });
+            });
+        }
+
+        function loadProducts() {
+            fetch(base + "/api/products").then(r => r.json()).then(data => {
+                productTable.innerHTML = "";
+                data.forEach(p => {
+                    productTable.innerHTML += `
+                <tr>
+                    <td>${p.productId}</td>
+                    <td>${p.sku}</td>
+                    <td>${p.name}</td>
+                    <td>${p.price}</td>
+                    <td>${p.categoryName}</td>
+                    <td>${p.supplierName}</td>
+                    <td>${p.quantity}</td>
+                    <td><button class="delete" onclick="deleteProduct(${p.productId})">Delete</button></td>
+                </tr>`;
+                });
+            });
+        }
+
+        /* ALERTS */
+        function loadAlerts() {
+            fetch(base + "/api/products").then(r => r.json()).then(data => {
+                alertTable.innerHTML = "";
+                data.filter(p => p.quantity <= LOW_STOCK_LIMIT)
+                    .forEach(p => {
+                        alertTable.innerHTML += `
+                    <tr class="alert">
+                        <td>${p.productId}</td>
+                        <td>${p.name}</td>
+                        <td>${p.categoryName}</td>
+                        <td>${p.quantity}</td>
+                    </tr>`;
+                    });
+            });
+        }
+
+        function loadTransactions() {
+            fetch(base + "/api/transactions")
+                .then(r => r.json())
+                .then(data => {
+                    const table = document.getElementById("transactionTable");
+                    table.innerHTML = "";
+                    data.forEach(t => {
+                        table.innerHTML += `
+                        <tr>
+                            <td>${t.transactionId}</td>
+                            <td>${t.transactionType}</td>
+                            <td>${t.product ? t.product.name : 'Unknown'}</td>
+                            <td>${t.quantity}</td>
+                            <td>${t.performedBy ? t.performedBy.username : 'Unknown'}</td>
+                            <td>${t.transactionDate}</td>
+                        </tr>`;
+                    });
+                });
+        }
+
+        /* CRUD + STOCK */
+        function addCategory() {
+            fetch(base + "/api/categories", {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ categoryName: catName.value, description: catDesc.value })
+            }).then(r => r.text()).then(msg => { catMsg.innerText = msg; loadCategories(); });
+        }
+
+        function deleteCategory(id) {
+            fetch(`${base}/api/categories/${id}`, { method: "DELETE", headers: getAuthHeaders() })
+                .then(r => r.text()).then(alert).then(loadCategories);
+        }
+
+        function addSupplier() {
+            fetch(base + "/api/suppliers", {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    supplierName: supName.value,
+                    contactNumber: supPhone.value,
+                    email: supEmail.value,
+                    address: supAddr.value
+                })
+            }).then(r => r.text()).then(msg => { supMsg.innerText = msg; loadSuppliers(); });
+        }
+
+        function deleteSupplier(id) {
+            fetch(`${base}/api/suppliers/${id}`, { method: "DELETE", headers: getAuthHeaders() })
+                .then(r => r.text()).then(alert).then(loadSuppliers);
+        }
+
+        function addProduct() {
+            const catId = categorySelect.value;
+            const supId = supplierSelect.value;
+
+            if (!sku.value || !pname.value || !price.value || !catId || !supId) {
+                prodMsg.innerText = "All fields are required!";
+                prodMsg.className = "error";
+                return;
+            }
+
+            const productData = {
+                sku: sku.value,
+                name: pname.value,
+                price: parseInt(price.value),
+                category: { categoryId: parseInt(catId) },
+                supplier: { supplierId: parseInt(supId) }
+            };
+
+            fetch(base + "/api/inventory/product", {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify(productData)
+            })
+                .then(r => r.text())
+                .then(msg => {
+                    prodMsg.innerText = msg;
+                    prodMsg.className = "msg";
+                    if (msg === "Product Added Successfully") {
+                        sku.value = "";
+                        pname.value = "";
+                        price.value = "";
+                        categorySelect.value = "";
+                        supplierSelect.value = "";
+                        loadProducts();
+                    }
+                })
+                .catch(err => {
+                    prodMsg.innerText = "Error adding product";
+                    prodMsg.className = "error";
+                });
+        }
+
+        function loadStockTable() {
+            fetch(base + "/api/products")
+                .then(r => r.json())
+                .then(data => {
+                    stockTable.innerHTML = "";
+                    data.forEach(p => {
+                        stockTable.innerHTML += `
+                <tr>
+                    <td>${p.productId}</td>
+                    <td>${p.name}</td>
+                    <td>${p.quantity}</td>
+                </tr>`;
+                    });
+                });
+        }
+
+
+        function deleteProduct(id) {
+            fetch(`${base}/api/products/${id}`, { method: "DELETE", headers: getAuthHeaders() })
+                .then(r => r.text()).then(alert).then(loadProducts);
+        }
+
+        function stockIn() {
+            if (!pid.value || !qty.value) {
+                stockMsg.innerText = "Please enter Product ID and Quantity";
+                stockMsg.className = "error";
+                return;
+            }
+            fetch(`${base}/api/inventory/stock-in/${pid.value}/${qty.value}`, { method: "PUT", headers: getAuthHeaders() })
+                .then(r => r.text()).then(msg => {
+                    stockMsg.innerText = msg;
+                    stockMsg.className = "msg";
+                    pid.value = "";
+                    qty.value = "";
+                    loadStockTable();
+                });
+        }
+
+        function stockOut() {
+            if (!pid.value || !qty.value) {
+                stockMsg.innerText = "Please enter Product ID and Quantity";
+                stockMsg.className = "error";
+                return;
+            }
+            fetch(`${base}/api/inventory/stock-out/${pid.value}/${qty.value}`, { method: "PUT", headers: getAuthHeaders() })
+                .then(r => r.text()).then(msg => {
+                    stockMsg.innerText = msg;
+                    stockMsg.className = "msg";
+                    pid.value = "";
+                    qty.value = "";
+                    loadStockTable();
+                });
+        }
+
+        function logout() {
+            if (confirm("Are you sure you want to logout?")) {
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+
+</body>
+
+</html>
