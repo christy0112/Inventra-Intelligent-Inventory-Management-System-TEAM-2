@@ -6,17 +6,16 @@ A Spring Boot inventory management system with MySQL database, featuring admin a
 
 
 in "src\main\resources\application.properties" path
+```properties
 1.spring.mail.username=use your own email
 2.spring.mail.password=use your own app passqword
 3.insert your my sql password into the this file
+```
 
 ### 1. Setup Database
 Run `create_all_tables.sql` in MySQL Workbench to create the database schema.
 
-### 2. Start Application
-```bash
-mvnw.cmd spring-boot:run
-```
+
 
 ### 3. Access Dashboards
 - login:http://localhost:8081/login.html

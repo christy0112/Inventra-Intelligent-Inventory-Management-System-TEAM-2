@@ -13,11 +13,9 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    // SIGNUP (admin-only when an admin exists)
+    // SIGNUP - Anyone can signup and choose their role (ADMIN or STAFF)
     @PostMapping("/signup")
-    public String signup(@RequestBody SignupRequest request,
-                         @RequestHeader(value = "X-Admin-Username", required = false) String adminUsername,
-                         @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+    public String signup(@RequestBody SignupRequest request) {
         // Convert DTO to User entity
         User user = new User();
         user.setUsername(request.getUsername());
@@ -25,7 +23,8 @@ public class AuthController {
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
         
-        return authService.registerUser(user, adminUsername, adminPassword);
+        // No admin credentials required - anyone can signup
+        return authService.registerUser(user, null, null);
     }
 
     // SIGNIN

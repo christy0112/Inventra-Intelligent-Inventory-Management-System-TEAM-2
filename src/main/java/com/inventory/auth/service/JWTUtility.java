@@ -55,4 +55,21 @@ public class JWTUtility {
             return false;
         }
     }
+
+    public Integer getUserIdFromToken(String token) {
+        try {
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            String subject = Jwts.parserBuilder()
+                    .setSigningKey(signingKey)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getSubject();
+            return Integer.parseInt(subject);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
 }

@@ -497,13 +497,21 @@
                 stockMsg.className = "error";
                 return;
             }
-            fetch(`${base}/api/inventory/stock-in/${pid.value}/${qty.value}`, { method: "PUT", headers: getAuthHeaders() })
+            fetch(`${base}/api/inventory/stock-in`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    productId: parseInt(pid.value),
+                    quantity: parseInt(qty.value)
+                })
+            })
                 .then(r => r.text()).then(msg => {
                     stockMsg.innerText = msg;
                     stockMsg.className = "msg";
                     pid.value = "";
                     qty.value = "";
                     loadStockTable();
+                    loadTransactions();
                 });
         }
 
@@ -513,13 +521,21 @@
                 stockMsg.className = "error";
                 return;
             }
-            fetch(`${base}/api/inventory/stock-out/${pid.value}/${qty.value}`, { method: "PUT", headers: getAuthHeaders() })
+            fetch(`${base}/api/inventory/stock-out`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    productId: parseInt(pid.value),
+                    quantity: parseInt(qty.value)
+                })
+            })
                 .then(r => r.text()).then(msg => {
                     stockMsg.innerText = msg;
                     stockMsg.className = "msg";
                     pid.value = "";
                     qty.value = "";
                     loadStockTable();
+                    loadTransactions();
                 });
         }
 

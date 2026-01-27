@@ -25,7 +25,7 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
-    // SIGNUP - Admin only (except first admin bootstrap)
+    // SIGNUP - Anyone can signup and choose their role (ADMIN or STAFF)
     public String registerUser(User userDetails, String adminUsername, String adminPassword) {
 
         if (userRepository.findByUsername(userDetails.getUsername()) != null) {
@@ -36,26 +36,32 @@ public class AuthService {
         }
 
         boolean hasAdmin = userRepository.existsByRoleIgnoreCase("ADMIN");
-        if (hasAdmin) {
-            // Validate admin credentials
-            if (adminUsername == null || adminPassword == null) {
-                return "Only admin can register new users";
-            }
-            User adminUser = userRepository.findByUsername(adminUsername);
-            if (adminUser == null || !"ADMIN".equalsIgnoreCase(adminUser.getRole())) {
-                return "Only admin can register new users";
-            }
-            if (!passwordEncoder.matches(adminPassword, adminUser.getPassword())) {
-                return "Only admin can register new users";
-            }
+        String requestedRole = userDetails.getRole() != null ? userDetails.getRole().trim() : null;
+        
+        // Normalize role: "admin" -> "ADMIN", "employee"/"staff" -> "STAFF", empty/null -> "STAFF"
+        // Only two roles allowed: ADMIN and STAFF
+        if (requestedRole == null || requestedRole.isEmpty()) {
+            requestedRole = "STAFF";
+        } else if ("admin".equalsIgnoreCase(requestedRole)) {
+            requestedRole = "ADMIN";
+        } else if ("employee".equalsIgnoreCase(requestedRole) || "staff".equalsIgnoreCase(requestedRole)) {
+            requestedRole = "STAFF";
         } else {
-            // First bootstrap user becomes ADMIN automatically
-            userDetails.setRole("ADMIN");
+            requestedRole = requestedRole.toUpperCase();
+            // Validate only ADMIN or STAFF roles are allowed
+            if (!"ADMIN".equals(requestedRole) && !"STAFF".equals(requestedRole)) {
+                requestedRole = "STAFF"; // Default to STAFF for invalid roles
+            }
         }
-
-        if (userDetails.getRole() == null) {
-            userDetails.setRole("USER");
+        
+        // Allow anyone to signup with their chosen role (ADMIN or STAFF)
+        // No admin credential requirement - users can choose their role freely
+        if (!hasAdmin && "STAFF".equals(requestedRole)) {
+            // If no admin exists and user chose STAFF, make them ADMIN (first user must be admin)
+            requestedRole = "ADMIN";
         }
+        
+        userDetails.setRole(requestedRole);
 
         userDetails.setPassword(passwordEncoder.encode(userDetails.getPassword()));
         userRepository.save(userDetails);

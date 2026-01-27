@@ -34,5 +34,11 @@ public class TransactionController {
         TransactionType type = TransactionType.valueOf(request.getTransactionType().toUpperCase());
         transactionService.log(type, request.getProductId(), request.getQuantity(), request.getPerformedByUserId());
         return ResponseEntity.ok("Transaction logged");
+//        {
+//            "transactionType": "IN",
+//                "productId": 5,
+//                "quantity": 10,
+//                "performedByUserId": 2
+//        }
     }
 }
