@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+
 /**
  * Report Controller - Module 5: Reports & Analytics
  * Handles report generation and export functionality
@@ -30,8 +32,9 @@ public class ReportController {
      * Matches pseudocode: generateReport(filters)
      */
     @GetMapping("/generate")
-    public ReportResponse generateReport() {
-        return reportService.generate();
+    public ReportResponse generateReport(@RequestParam(value = "from", required = false) LocalDate from,
+                                         @RequestParam(value = "to", required = false) LocalDate to) {
+        return reportService.generate(from, to);
     }
 
     /**
@@ -39,8 +42,9 @@ public class ReportController {
      * Matches pseudocode: export(format)
      */
     @GetMapping("/export/csv")
-    public ResponseEntity<byte[]> exportCsv() {
-        byte[] csvData = exportService.exportToCsv();
+    public ResponseEntity<byte[]> exportCsv(@RequestParam(value = "from", required = false) LocalDate from,
+                                            @RequestParam(value = "to", required = false) LocalDate to) {
+        byte[] csvData = exportService.exportToCsv(from, to);
         
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv"));
@@ -56,8 +60,9 @@ public class ReportController {
      * Matches pseudocode: export(format)
      */
     @GetMapping("/export/pdf")
-    public ResponseEntity<byte[]> exportPdf() {
-        byte[] pdfData = exportService.exportToPdf();
+    public ResponseEntity<byte[]> exportPdf(@RequestParam(value = "from", required = false) LocalDate from,
+                                            @RequestParam(value = "to", required = false) LocalDate to) {
+        byte[] pdfData = exportService.exportToPdf(from, to);
         
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

@@ -8,7 +8,9 @@ import com.inventory.transactions.model.TransactionType;
 import com.inventory.transactions.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,8 +27,26 @@ public class ReportService {
     }
 
     public ReportResponse generate() {
+        return generate(null, null);
+    }
+
+    public ReportResponse generate(LocalDate fromDate, LocalDate toDate) {
+        boolean filterByDate = fromDate != null || toDate != null;
         List<Product> products = productRepository.findAll();
         List<ProductReportRow> rows = new ArrayList<>();
+
+        LocalDateTime from = null;
+        LocalDateTime to = null;
+        if (fromDate != null && toDate != null) {
+            from = fromDate.atStartOfDay();
+            to = toDate.atTime(LocalTime.MAX);
+        } else if (fromDate != null) {
+            from = fromDate.atStartOfDay();
+            to = fromDate.atTime(LocalTime.MAX);
+        } else if (toDate != null) {
+            from = toDate.atStartOfDay();
+            to = toDate.atTime(LocalTime.MAX);
+        }
 
         for (Product product : products) {
             ProductReportRow row = new ProductReportRow();
@@ -38,13 +58,31 @@ public class ReportService {
             row.setCurrentStock(product.getQuantity() == null ? 0 : product.getQuantity());
             row.setMinStockLevel(product.getMinStockLevel() == null ? 0 : product.getMinStockLevel());
 
-            Integer totalIn = transactionRepository.sumQuantityByProductAndType(
-                    product.getProductId(), TransactionType.STOCK_IN);
-            Integer totalOut = transactionRepository.sumQuantityByProductAndType(
-                    product.getProductId(), TransactionType.STOCK_OUT);
+            Integer totalIn;
+            Integer totalOut;
+            if (from != null && to != null) {
+                totalIn = transactionRepository.sumQuantityByProductAndTypeAndDateRange(
+                        product.getProductId(), TransactionType.STOCK_IN, from, to);
+                totalOut = transactionRepository.sumQuantityByProductAndTypeAndDateRange(
+                        product.getProductId(), TransactionType.STOCK_OUT, from, to);
+            } else {
+                totalIn = transactionRepository.sumQuantityByProductAndType(
+                        product.getProductId(), TransactionType.STOCK_IN);
+                totalOut = transactionRepository.sumQuantityByProductAndType(
+                        product.getProductId(), TransactionType.STOCK_OUT);
+            }
 
             row.setTotalStockIn(totalIn);
             row.setTotalStockOut(totalOut);
+
+            // If user filtered by date, only include products that had transactions in that range
+            if (filterByDate) {
+                int inVal = totalIn != null ? totalIn : 0;
+                int outVal = totalOut != null ? totalOut : 0;
+                if (inVal == 0 && outVal == 0) {
+                    continue;
+                }
+            }
 
             rows.add(row);
         }

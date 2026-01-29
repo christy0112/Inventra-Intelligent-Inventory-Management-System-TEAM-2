@@ -141,6 +141,7 @@
         <button onclick="openSection('stock')">Stock</button>
         <button onclick="openSection('alerts')">Alerts</button>
         <button onclick="openSection('transactions')">Transactions</button>
+        <button onclick="openSection('reports')">Reports & Analytics</button>
     </div>
 
     <!-- CATEGORY -->
@@ -265,9 +266,64 @@
         </table>
     </div>
 
+    <!-- REPORTS & ANALYTICS (MODULE 5) -->
+    <div id="reports" class="section">
+        <h3>Reports & Analytics</h3>
+
+        <div class="row">
+            <div>
+                <label for="reportFrom">From Date</label>
+                <input id="reportFrom" type="date">
+            </div>
+            <div>
+                <label for="reportTo">To Date</label>
+                <input id="reportTo" type="date">
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label for="reportSort">Sort By</label>
+                <select id="reportSort" onchange="renderReportTable()">
+                    <option value="name">Product Name</option>
+                    <option value="currentStock">Current Stock</option>
+                    <option value="totalStockIn">Total Stock In (Date Range)</option>
+                    <option value="totalStockOut">Total Stock Out (Date Range)</option>
+                </select>
+            </div>
+            <div>
+                <label>&nbsp;</label>
+                <button onclick="loadReport()">Generate Report</button>
+            </div>
+        </div>
+
+        <button onclick="downloadReportPdf()" style="background:#455a64;color:white;border:none;cursor:pointer;">
+            Download PDF
+        </button>
+
+        <div class="msg" id="reportMsg"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>SKU</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th>Current Stock</th>
+                    <th>Total IN (Range)</th>
+                    <th>Total OUT (Range)</th>
+                </tr>
+            </thead>
+            <tbody id="reportTable"></tbody>
+        </table>
+    </div>
+
     <script>
         const base = "http://localhost:8081";
         const LOW_STOCK_LIMIT = 5;
+        let reportRows = [];
 
         function getAuthHeaders() {
             const token = localStorage.getItem("token");
@@ -299,6 +355,9 @@
             }
             if (id === "transactions") {
                 loadTransactions();
+            }
+            if (id === "reports") {
+                loadReport();
             }
         }
 
@@ -393,6 +452,62 @@
                         </tr>`;
                     });
                 });
+        }
+
+        /* REPORTS (MODULE 5) */
+        function buildReportQuery() {
+            const from = reportFrom.value ? `from=${encodeURIComponent(reportFrom.value)}` : "";
+            const to = reportTo.value ? `to=${encodeURIComponent(reportTo.value)}` : "";
+            const parts = [from, to].filter(Boolean);
+            return parts.length ? "?" + parts.join("&") : "";
+        }
+
+        function loadReport() {
+            reportMsg.innerText = "Loading report...";
+            reportMsg.className = "msg";
+
+            fetch(base + "/api/reports/generate" + buildReportQuery(), { headers: getAuthHeaders() })
+                .then(r => r.json())
+                .then(data => {
+                    reportRows = Array.isArray(data.rows) ? data.rows : [];
+                    reportMsg.innerText = `Report generated at: ${data.generatedAt} (Rows: ${reportRows.length})`;
+                    reportMsg.className = "msg";
+                    renderReportTable();
+                })
+                .catch(() => {
+                    reportMsg.innerText = "Failed to load report.";
+                    reportMsg.className = "error";
+                });
+        }
+
+        function renderReportTable() {
+            const sortBy = reportSort.value || "name";
+            const sorted = [...reportRows].sort((a, b) => {
+                const av = a?.[sortBy];
+                const bv = b?.[sortBy];
+                if (typeof av === "number" && typeof bv === "number") return bv - av; // desc for numeric
+                return String(av ?? "").localeCompare(String(bv ?? "")); // asc for strings
+            });
+
+            reportTable.innerHTML = "";
+            sorted.forEach(r => {
+                reportTable.innerHTML += `
+                <tr>
+                    <td>${r.productId ?? ""}</td>
+                    <td>${r.sku ?? ""}</td>
+                    <td>${r.name ?? ""}</td>
+                    <td>${r.category ?? ""}</td>
+                    <td>${r.supplier ?? ""}</td>
+                    <td>${r.currentStock ?? 0}</td>
+                    <td>${r.totalStockIn ?? 0}</td>
+                    <td>${r.totalStockOut ?? 0}</td>
+                </tr>`;
+            });
+        }
+
+        function downloadReportPdf() {
+            const url = base + "/api/reports/export/pdf" + buildReportQuery();
+            window.open(url, "_blank");
         }
 
         /* CRUD + STOCK */
