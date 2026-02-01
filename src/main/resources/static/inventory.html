@@ -123,6 +123,53 @@
         .logout-btn:hover {
             background: #b71c1c;
         }
+
+        .threshold-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+        .threshold-cell input {
+            width: 70px;
+            min-width: 70px;
+            padding: 4px;
+            margin: 0;
+        }
+        .threshold-cell button {
+            width: auto;
+            padding: 4px 8px;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .mail-trigger-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+        .mail-trigger-cell input {
+            width: 70px;
+            min-width: 70px;
+            padding: 4px;
+            margin: 0;
+        }
+        .mail-trigger-cell button {
+            width: auto;
+            padding: 4px 8px;
+            margin: 0;
+            flex-shrink: 0;
+            background: #1976d2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .mail-trigger-cell button:hover {
+            background: #0d47a1;
+        }
     </style>
 </head>
 
@@ -207,6 +254,7 @@
                 <th>Category</th>
                 <th>Supplier</th>
                 <th>Qty</th>
+                <th>Low stock threshold</th>
                 <th>Action</th>
             </tr>
             <tbody id="productTable"></tbody>
@@ -242,7 +290,9 @@
                 <th>ID</th>
                 <th>Product</th>
                 <th>Category</th>
+                <th>Supplier</th>
                 <th>Available Qty</th>
+                <th>Mail Trigger</th>
             </tr>
             <tbody id="alertTable"></tbody>
         </table>
@@ -322,8 +372,20 @@
 
     <script>
         const base = "http://localhost:8081";
-        const LOW_STOCK_LIMIT = 5;
+        const DEFAULT_LOW_STOCK = 5;  // fallback when product has no custom threshold
         let reportRows = [];
+
+        function formatDateTime(isoStr) {
+            if (!isoStr) return "";
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return isoStr;
+            const day = String(d.getDate()).padStart(2, "0");
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, "0");
+            const mins = String(d.getMinutes()).padStart(2, "0");
+            return day + "-" + month + "-" + year + "  " + hours + ":" + mins;
+        }
 
         function getAuthHeaders() {
             const token = localStorage.getItem("token");
@@ -399,39 +461,98 @@
         }
 
         function loadProducts() {
-            fetch(base + "/api/products").then(r => r.json()).then(data => {
+            fetch(base + "/api/products", { headers: getAuthHeaders() }).then(r => r.json()).then(data => {
                 productTable.innerHTML = "";
                 data.forEach(p => {
+                    const thresh = p.minStockLevel != null ? p.minStockLevel : 0;
                     productTable.innerHTML += `
                 <tr>
                     <td>${p.productId}</td>
                     <td>${p.sku}</td>
                     <td>${p.name}</td>
                     <td>${p.price}</td>
-                    <td>${p.categoryName}</td>
-                    <td>${p.supplierName}</td>
+                    <td>${p.categoryName || "-"}</td>
+                    <td>${p.supplierName || "-"}</td>
                     <td>${p.quantity}</td>
+                    <td>
+                        <div class="threshold-cell">
+                            <input type="number" id="thresh_${p.productId}" value="${thresh}" min="0">
+                            <button type="button" onclick="setThreshold(${p.productId})">Set</button>
+                        </div>
+                    </td>
                     <td><button class="delete" onclick="deleteProduct(${p.productId})">Delete</button></td>
                 </tr>`;
                 });
             });
         }
 
-        /* ALERTS */
+        function setThreshold(productId) {
+            const input = document.getElementById("thresh_" + productId);
+            if (!input) return;
+            const value = parseInt(input.value, 10);
+            if (isNaN(value) || value < 0) {
+                alert("Enter a valid threshold (0 or greater).");
+                return;
+            }
+            fetch(`${base}/api/products/min-stock/${productId}/${value}`, {
+                method: "PUT",
+                headers: getAuthHeaders()
+            })
+                .then(r => r.text())
+                .then(msg => {
+                    alert(msg);
+                    loadProducts();
+                    loadAlerts();
+                })
+                .catch(() => alert("Failed to update threshold."));
+        }
+
+        /* ALERTS - use per-product low-stock threshold */
+        function getLowStockThreshold(p) {
+            const level = p.minStockLevel != null ? p.minStockLevel : 0;
+            return level > 0 ? level : DEFAULT_LOW_STOCK;
+        }
         function loadAlerts() {
-            fetch(base + "/api/products").then(r => r.json()).then(data => {
+            fetch(base + "/api/products", { headers: getAuthHeaders() }).then(r => r.json()).then(data => {
                 alertTable.innerHTML = "";
-                data.filter(p => p.quantity <= LOW_STOCK_LIMIT)
+                data.filter(p => p.quantity <= getLowStockThreshold(p))
                     .forEach(p => {
                         alertTable.innerHTML += `
                     <tr class="alert">
                         <td>${p.productId}</td>
                         <td>${p.name}</td>
-                        <td>${p.categoryName}</td>
+                        <td>${p.categoryName || "-"}</td>
+                        <td>${p.supplierName || "-"}</td>
                         <td>${p.quantity}</td>
+                        <td>
+                            <div class="mail-trigger-cell">
+                                <input type="number" id="mailQty_${p.productId}" value="1" min="1" placeholder="Qty">
+                                <button type="button" onclick="confirmMailTrigger(${p.productId})">Confirm</button>
+                            </div>
+                        </td>
                     </tr>`;
                     });
             });
+        }
+
+        function confirmMailTrigger(productId) {
+            const input = document.getElementById("mailQty_" + productId);
+            if (!input) return;
+            const qty = parseInt(input.value, 10);
+            if (isNaN(qty) || qty < 1) {
+                alert("Please enter a valid quantity (at least 1).");
+                return;
+            }
+            fetch(base + "/api/alerts/notify-supplier", {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ productId: productId, quantity: qty })
+            })
+                .then(r => r.ok ? r.text() : r.text().then(t => { throw new Error(t); }))
+                .then(msg => {
+                    alert(msg);
+                })
+                .catch(err => alert(err.message || "Failed to send email to supplier."));
         }
 
         function loadTransactions() {
@@ -448,7 +569,7 @@
                             <td>${t.product ? t.product.name : 'Unknown'}</td>
                             <td>${t.quantity}</td>
                             <td>${t.performedBy ? t.performedBy.username : 'Unknown'}</td>
-                            <td>${t.transactionDate}</td>
+                            <td>${formatDateTime(t.transactionDate)}</td>
                         </tr>`;
                     });
                 });
@@ -470,7 +591,7 @@
                 .then(r => r.json())
                 .then(data => {
                     reportRows = Array.isArray(data.rows) ? data.rows : [];
-                    reportMsg.innerText = `Report generated at: ${data.generatedAt} (Rows: ${reportRows.length})`;
+                    reportMsg.innerText = `Report generated at: ${formatDateTime(data.generatedAt)} (Rows: ${reportRows.length})`;
                     reportMsg.className = "msg";
                     renderReportTable();
                 })

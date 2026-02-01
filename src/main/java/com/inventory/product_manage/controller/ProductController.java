@@ -70,6 +70,7 @@ public class ProductController {
                     p.getSupplier() != null ? p.getSupplier().getSupplierName() : null);
 
             map.put("quantity", p.getQuantity() == null ? 0 : p.getQuantity());
+            map.put("minStockLevel", p.getMinStockLevel() == null ? 0 : p.getMinStockLevel());
 
             response.add(map);
         }

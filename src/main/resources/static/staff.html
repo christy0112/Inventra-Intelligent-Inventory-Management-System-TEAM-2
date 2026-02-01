@@ -137,17 +137,29 @@
       style="width: 100%; padding: 10px; margin-top: 10px; background: #d32f2f; color: white; border: none; cursor: pointer;">Stock
       OUT</button>
     <div id="stockMsg" style="margin-top:8px;"></div>
+    <table style="margin-top:15px;">
+      <thead>
+        <tr>
+          <th>Product ID</th>
+          <th>Product Name</th>
+          <th>Current Quantity</th>
+        </tr>
+      </thead>
+      <tbody id="stockTable"></tbody>
+    </table>
   </div>
 
-  <!-- ALERTS -->
+  <!-- ALERTS (current low-stock from product quantities vs threshold) -->
   <div id="alertSection" class="section">
     <h3>Low Stock Alerts</h3>
+    <p style="color:#666;font-size:13px;">Products whose current quantity is at or below their low-stock threshold.</p>
     <table>
       <thead>
         <tr>
-          <th>Alert ID</th>
+          <th>ID</th>
           <th>Product</th>
-          <th>Message</th>
+          <th>Category</th>
+          <th>Available Qty</th>
         </tr>
       </thead>
       <tbody id="alertTable"></tbody>
@@ -232,6 +244,18 @@
     const base = "http://localhost:8081";
     let reportRows = [];
 
+    function formatDateTime(isoStr) {
+      if (!isoStr) return "";
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, "0");
+      const mins = String(d.getMinutes()).padStart(2, "0");
+      return day + "-" + month + "-" + year + "  " + hours + ":" + mins;
+    }
+
     function getAuthHeaders() {
       const token = localStorage.getItem("token");
       return {
@@ -253,7 +277,7 @@
     function openStock() {
       hideAll();
       stockSection.classList.add('active');
-      loadProducts();
+      loadStockTable();
     }
 
     function openAlerts() {
@@ -290,23 +314,43 @@
         });
     }
 
-    function renderAlerts(data) {
+    function loadStockTable() {
+      fetch(base + "/api/products", { headers: getAuthHeaders() })
+        .then(r => r.json())
+        .then(data => {
+          const tbody = document.getElementById("stockTable");
+          tbody.innerHTML = "";
+          data.forEach(p => {
+            tbody.innerHTML += `
+         <tr>
+           <td>${p.productId}</td>
+           <td>${p.name}</td>
+           <td>${p.quantity}</td>
+         </tr>`;
+          });
+        });
+    }
+
+    function renderAlertsFromProducts(products) {
+      const threshold = (p) => (p.minStockLevel != null && p.minStockLevel > 0) ? p.minStockLevel : 5;
+      const lowStock = products.filter(p => p.quantity <= threshold(p));
       alertTable.innerHTML = "";
-      data.forEach(a => {
+      lowStock.forEach(p => {
         alertTable.innerHTML += `
         <tr>
-          <td>${a.alertId}</td>
-          <td>${a.productId}</td>
-          <td>${a.alertMessage}</td>
+          <td>${p.productId}</td>
+          <td>${p.name}</td>
+          <td>${p.categoryName || "-"}</td>
+          <td>${p.quantity}</td>
         </tr>`;
       });
     }
 
     function loadAlerts() {
-      fetch(base + "/alerts/open", { headers: getAuthHeaders() })
+      fetch(base + "/api/products", { headers: getAuthHeaders() })
         .then(r => r.json())
         .then(data => {
-          renderAlerts(data);
+          renderAlertsFromProducts(data);
         });
     }
 
@@ -323,7 +367,7 @@
               <td>${t.product ? t.product.name : 'Unknown'}</td>
               <td>${t.quantity}</td>
               <td>${t.performedBy ? t.performedBy.username : 'Unknown'}</td>
-              <td>${t.transactionDate}</td>
+              <td>${formatDateTime(t.transactionDate)}</td>
             </tr>`;
           });
         });
@@ -345,7 +389,7 @@
         .then(r => r.json())
         .then(data => {
           reportRows = Array.isArray(data.rows) ? data.rows : [];
-          reportMsg.innerText = `Report generated at: ${data.generatedAt} (Rows: ${reportRows.length})`;
+          reportMsg.innerText = `Report generated at: ${formatDateTime(data.generatedAt)} (Rows: ${reportRows.length})`;
           reportMsg.className = "msg";
           renderReportTable();
         })
@@ -384,14 +428,16 @@
     }
 
     function checkAlertsOnLoad() {
-      fetch(base + "/alerts/open", { headers: getAuthHeaders() })
+      fetch(base + "/api/products", { headers: getAuthHeaders() })
         .then(r => r.json())
-        .then(data => {
-          if (data.length > 0) {
-            const msg = "Low stock alerts found:\n\n"
-              + data.map(a => "- " + a.alertMessage).join("\n");
+        .then(products => {
+          const threshold = (p) => (p.minStockLevel != null && p.minStockLevel > 0) ? p.minStockLevel : 5;
+          const lowStock = products.filter(p => p.quantity <= threshold(p));
+          if (lowStock.length > 0) {
+            const msg = "Low stock alerts:\n\n"
+              + lowStock.map(p => "- " + p.name + " (Available: " + p.quantity + ")").join("\n");
             alert(msg);
-            renderAlerts(data);
+            renderAlertsFromProducts(products);
             hideAll();
             alertSection.classList.add('active');
           }
@@ -419,6 +465,7 @@
           pid.value = "";
           qty.value = "";
           loadProducts();
+          loadStockTable();
           checkAlertsOnLoad();
           loadTransactions();
         });
@@ -445,6 +492,7 @@
           pid.value = "";
           qty.value = "";
           loadProducts();
+          loadStockTable();
           checkAlertsOnLoad();
           loadTransactions();
         });

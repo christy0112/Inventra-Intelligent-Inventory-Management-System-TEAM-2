@@ -54,4 +54,32 @@ public class EmailService {
             throw new RuntimeException("Failed to send reset email. Please try again later.");
         }
     }
+
+    /**
+     * Sends a low-stock alert email to the supplier with requested quantity.
+     */
+    public void sendLowStockAlertToSupplier(String toEmail, String supplierName, String productName,
+                                            String categoryName, int quantityRequested) {
+        if (toEmail == null || toEmail.isBlank()) {
+            throw new IllegalArgumentException("Supplier email is required to send alert.");
+        }
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Low Stock Alert - " + productName);
+            String body = "Dear " + supplierName + ",\n\n"
+                    + "There is low stock in this electronics company and the qty : " + quantityRequested + "\n\n"
+                    + "Product: " + productName + "\n"
+                    + "Category: " + (categoryName != null ? categoryName : "N/A") + "\n\n"
+                    + "Please arrange supply at the earliest.";
+            message.setText(body);
+
+            mailSender.send(message);
+            logger.info("Low stock alert email sent to supplier {} for product {}", toEmail, productName);
+        } catch (MailException e) {
+            logger.error("Failed to send low stock alert to {}: {}", toEmail, e.getMessage());
+            throw new RuntimeException("Failed to send email to supplier. Please try again later.");
+        }
+    }
 }
